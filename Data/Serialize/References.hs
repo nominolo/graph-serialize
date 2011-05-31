@@ -31,7 +31,7 @@ module Data.Serialize.References
 
     -- * Emitting Data, Labels, References
     Label, label, makeLabel, placeLabel,
-    reference, Size, sizeToBytes, ByteOrder,
+    reference, reference', Size, sizeToBytes, ByteOrder,
     -- ** Words
     emitWord8, emitWord8s,
     emitWord16le, emitWord16be, emitWord16host,
@@ -129,7 +129,7 @@ data RegionItem
     -- ^ Some data emitted to the region and its size.
   | LabelItem Label
     -- ^ The location of a label with number of padding bytes.
-  | LabelRef Label ByteOrder Size
+  | LabelRef Label ByteOrder Size (Int -> Int)
     -- ^ A reference to a label.
 
 emptyRegionContent :: RegionContent
@@ -343,15 +343,36 @@ alignedLabel r align = do
 -- encode the required range.  If they are not in range
 -- 'toLazyByteString' will fail.
 -- 
-reference :: Size -- ^ The size of the reference in bytes.  
+reference :: Size -- ^ The size of the reference in bytes.
           -> ByteOrder -- ^ Byte order used for encoding the reference.
           -> Region -- ^ The region in which the reference will be
                     -- emitted.
           -> Label -- ^ The target label.
           -> BuildM ()
-reference sz bo r l =
+reference sz bo r l = reference' sz bo id r l
+
+-- | Emit a reference to the given label in the current region.
+--
+-- The calculated offset will be passed to the function being
+-- supplied.  This can be use for example to change the unit of
+-- reference from bytes to, say, words.
+--
+-- Say, you're generating bytecode where each instruction is a
+-- multiple of 4 bytes.  Then a reference is known to be a multiple of
+-- 4.  If our bytecode only uses 16 bit references then it would be
+-- wasteful to store the lowest 2 bits which we know to be zero.  We
+-- can implement this transformation by passing @(\`shiftR\` 2)@ as
+-- the transformation function.
+reference' :: Size -- ^ The size of the reference in bytes.
+           -> ByteOrder -- ^ Byte order used for encoding the reference.
+           -> (Int -> Int) -- ^ Offset transformation function.
+           -> Region -- ^ The region in which the reference will be
+                    -- emitted.
+           -> Label -- ^ The target label.
+           -> BuildM ()
+reference' sz bo f r l =
   withRegion r $ \c ->
-    c{ rcItems = LabelRef l bo sz : rcItems c,
+    c{ rcItems = LabelRef l bo sz f : rcItems c,
        rcSize = rcSize c + sizeToBytes sz }
 
 -- | Serialise the graph into a lazy 'L.ByteString'.
@@ -385,7 +406,7 @@ toLazyByteString order build =
               LabelItem (Label l) -> do
                 writeArray label_locs l sz
                 go items sz out rcs
-              LabelRef (Label l) bo sz' -> do
+              LabelRef (Label l) bo sz' f -> do
                 -- Here comes the magic.  We're referencing refs which is
                 -- actually the result we're currently constructing.  This
                 -- is what the mfix is for.
@@ -393,8 +414,8 @@ toLazyByteString order build =
                 --when (target == (-1)) $ 
                 go items (sz + sizeToBytes sz')
                    (out `mappend`
-                    writeRef bo sz' (if target /= (-1) then target - sz else
-                                       dangling (Label l) sz))
+                    writeRef bo sz' (if target /= (-1) then f (target - sz)
+                                      else dangling (Label l) sz))
                    rcs
         let contents = map ((regions IM.!) . regionToInt) regions_ordered
         go [] 0 mempty contents)
