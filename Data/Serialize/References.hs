@@ -31,7 +31,7 @@ module Data.Serialize.References
 
     -- * Emitting Data, Labels, References
     Label, label, makeLabel, placeLabel,
-    reference, reference', Size, sizeToBytes, ByteOrder,
+    reference, reference', Size(..), sizeToBytes, ByteOrder(..),
     -- ** Words
     emitWord8, emitWord8s,
     emitWord16le, emitWord16be, emitWord16host,
