@@ -32,16 +32,18 @@ module Data.Serialize.References
     -- * Emitting Data, Labels, References
     Label, label, makeLabel, placeLabel,
     reference, Size, sizeToBytes, ByteOrder,
-    -- ** Emitting Words
+    -- ** Words
     emitWord8, emitWord8s,
     emitWord16le, emitWord16be, emitWord16host,
     emitWord32le, emitWord32be, emitWord32host,
     emitWord64le, emitWord64be, emitWord64host,
-    -- ** Emitting Ints
+    -- ** Ints
     emitInt8, emitInt8s,
     emitInt16le, emitInt16be, emitInt16host,
     emitInt32le, emitInt32be, emitInt32host,
     emitInt64le, emitInt64be, emitInt64host,
+    -- ** ByteStrings
+    emitByteString, emitLazyByteString,
     -- ** Storables
     emitStorable, emitStorableList,
     -- ** Alignment
@@ -61,6 +63,7 @@ import Data.Word
 import Foreign.Storable
 import qualified Blaze.ByteString.Builder as Blaze
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString as S
 import qualified Data.IntMap as IM
 
 -- | Monad for constructing the serialised structure.
@@ -256,6 +259,15 @@ emitInt64be r w = emit_ r (fromInt64be w) 8
 -- | Emit a 'Int64' in native host order and host endianness.
 emitInt64host :: Region -> Int64 -> BuildM ()
 emitInt64host r w = emit_ r (fromInt64host w) 8
+
+-- | Emit a strict 'S.ByteString'.
+emitByteString :: Region -> S.ByteString -> BuildM ()
+emitByteString r b = emit_ r (fromByteString b) (S.length b)
+
+-- | Emit a lazy 'L.ByteString'.
+emitLazyByteString :: Region -> L.ByteString -> BuildM ()
+emitLazyByteString r b =
+  emit_ r (fromLazyByteString b) (fromIntegral (L.length b))
 
 -- | Emit an instance of 'Storable'.  Does not take into account alignment.
 emitStorable :: Storable a => Region -> a -> BuildM ()
