@@ -14,17 +14,16 @@ test1 =
   L.unpack $ toLazyByteString id $ do
     r \<- 'newRegion'
     l1 \<- 'label' r
-    'emit' r (42 :: Word32)
+    'emitWord32le' r 42
     'reference' S4 LE r l1
-    emit r (43 :: Word32)
+    emitWord32le r 43
 
 test1 == [42,0,0,0,252,255,255,255,43,0,0,0]
 @
 
 -}
 module Data.Serialize.References
-  ( -- * Monad and ByteString construction
-    BuildM, toLazyByteString,
+  ( -- * Monad and ByteString construction    BuildM, toLazyByteString,
 
     -- * Regions
     Region, newRegion,
