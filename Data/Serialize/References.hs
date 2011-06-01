@@ -23,11 +23,11 @@ test1 == [42,0,0,0,252,255,255,255,43,0,0,0]
 
 -}
 module Data.Serialize.References
-  ( -- * Monad and ByteString construction    BuildM, toLazyByteString,
+  ( -- * Monad and ByteString construction
+    BuildM, toLazyByteString,
 
     -- * Regions
     Region, newRegion,
-
     -- * Emitting Data, Labels, References
     Label, label, makeLabel, placeLabel,
     reference, reference', Size(..), sizeToBytes, ByteOrder(..),
