@@ -105,10 +105,14 @@ instance Show Label where
 
 -- | The size of a reference (1, 2, 4, or 8 bytes).
 data Size = S1 | S2 | S4 | S8
+          | S1NoRC  -- ^ 1 byte but don't fail if out of range
+          | S2NoRC  -- ^ 2 byte but don't fail if out of range
   deriving (Eq, Show, Ord, Enum)
 
 -- | Translate 'Size' into matching number of bytes.
 sizeToBytes :: Size -> Int
+sizeToBytes S1NoRC = 1
+sizeToBytes S2NoRC = 2
 sizeToBytes s = 1 `shiftL` fromEnum s
 
 type NextRegion = Int
@@ -475,7 +479,14 @@ dangling l sz =
 writeRef :: ByteOrder -> Size -> Int -> Builder
 writeRef _ S1 offs | -128 <= offs && offs <= 127 =
   fromWrite (writeInt8 (fromIntegral offs))
+writeRef _ S1NoRC offs =
+  fromWrite (writeInt8 (fromIntegral offs))
 writeRef bo S2 offs | -32768 <= offs && offs <= 32767 =
+  case bo of
+    LE -> fromWrite (writeInt16le (fromIntegral offs))
+    BE -> fromWrite (writeInt16be (fromIntegral offs))
+    Host -> fromWrite (writeInt16host (fromIntegral offs))
+writeRef bo S2NoRC offs =
   case bo of
     LE -> fromWrite (writeInt16le (fromIntegral offs))
     BE -> fromWrite (writeInt16be (fromIntegral offs))
