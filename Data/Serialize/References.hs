@@ -28,9 +28,11 @@ module Data.Serialize.References
 
     -- * Regions
     Region, newRegion,
+
     -- * Emitting Data, Labels, References
     Label, label, makeLabel, placeLabel,
     reference, reference', Size(..), sizeToBytes, ByteOrder(..),
+    offset',
     -- ** Words
     emitWord8, emitWord8s,
     emitWord16le, emitWord16be, emitWord16host,
@@ -130,6 +132,8 @@ data RegionItem
     -- ^ The location of a label with number of padding bytes.
   | LabelRef Label ByteOrder Size (Int -> Int)
     -- ^ A reference to a label.
+  | LabelOffs Label Label ByteOrder Size (Int -> Int)
+    -- ^ Distance between two labels.
 
 emptyRegionContent :: RegionContent
 emptyRegionContent =
@@ -374,6 +378,34 @@ reference' sz bo f r l =
     c{ rcItems = LabelRef l bo sz f : rcItems c,
        rcSize = rcSize c + sizeToBytes sz }
 
+-- | Emit the distance between two labels.
+--
+-- If the start label occurs before the end label, then the written integer
+-- will be positive, negative otherwise.
+--
+-- For example:
+--
+-- @test3 = ('toLazyByteString' id $ do
+--   r <- 'newRegion'
+--   l1 <- 'label' r
+--   'emitWord32le' r 42
+--   l2 <- label r
+--   'offset'' S4 LE id r l1 l2) == 'L.pack' [42,0,0,0,4,0,0,0]
+-- @
+--
+offset' :: Size -- ^ The size of the reference in bytes.
+        -> ByteOrder -- ^ Byte order used for encoding the reference.
+        -> (Int -> Int) -- ^ Offset transformation function.
+        -> Region -- ^ The region in which the reference will be
+                  -- emitted.
+        -> Label  -- ^ Start label
+        -> Label  -- ^ End label
+        -> BuildM ()
+offset' sz bo f r l1 l2 =
+  withRegion r $ \c ->
+    c{ rcItems = LabelOffs l1 l2 bo sz f : rcItems c,
+       rcSize = rcSize c + sizeToBytes sz }
+
 -- | Serialise the graph into a lazy 'L.ByteString'.
 toLazyByteString ::
      ([Region] -> [Region])
@@ -416,6 +448,16 @@ toLazyByteString order build =
                     writeRef bo sz' (if target /= (-1) then f (target - sz)
                                       else dangling (Label l) sz))
                    rcs
+              LabelOffs (Label l1) (Label l2) bo sz' f ->
+                let ~source = refs ! l1
+                    ~target = refs ! l2
+                in go items (sz + sizeToBytes sz')
+                      (out `mappend`
+                       writeRef bo sz'
+                         (if target == (-1) then dangling (Label l2) sz else
+                           if source == (-1) then dangling (Label l1) sz else
+                            f (target - source)))
+                      rcs
         let contents = map ((regions IM.!) . regionToInt) regions_ordered
         go [] 0 mempty contents)
         
@@ -471,3 +513,12 @@ test2 =
     emit r (43 :: Word32)
     placeLabel r l1
 -}
+{-
+test3 :: Bool
+test3 = (L.unpack $ toLazyByteString id $ do
+  r <- newRegion
+  l1 <- label r
+  emitWord32le r 42
+  l2 <- label r
+  offset' S4 LE id r l1 l2) == [42,0,0,0,4,0,0,0]
+-- -}
