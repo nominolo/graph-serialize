@@ -45,24 +45,26 @@ module Data.Serialize.References
     emitInt64le, emitInt64be, emitInt64host,
     -- ** ByteStrings
     emitByteString, emitLazyByteString,
-    -- ** Storables
-    emitStorable, emitStorableList,
+
+    --emitStorable, emitStorableList,
     -- ** Alignment
     padTo, alignedLabel
   )
 where
 
-import Blaze.ByteString.Builder hiding ( toLazyByteString )
 import Control.Applicative
 import Control.Monad
 import Control.Monad.ST
 import Data.Array.Base
 import Data.Bits ( shiftL )
+import Data.ByteString.Lazy.Builder hiding ( toLazyByteString )
+import Data.ByteString.Lazy.Builder.Extras ( word16Host, word32Host, word64Host,
+                                             int16Host, int32Host, int64Host )
 import Data.Int
 import Data.Monoid
 import Data.Word
-import Foreign.Storable
-import qualified Blaze.ByteString.Builder as Blaze
+--import Foreign.Storable
+import qualified Data.ByteString.Lazy.Builder as Builder
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as S
 import qualified Data.IntMap as IM
@@ -180,102 +182,104 @@ emit_ r bld !sz = withRegion r $ \c ->
 
 -- | Emit a single byte.
 emitWord8 :: Region -> Word8 -> BuildM ()
-emitWord8 r w = emit_ r (fromWord8 w) 1
+emitWord8 r w = emit_ r (word8 w) 1
+
 
 -- | Emit a list of bytes.
 emitWord8s :: Region -> [Word8] -> BuildM ()
-emitWord8s r ws = emit_ r (fromWord8s ws) (length ws)
+emitWord8s r ws = emit_ r (mconcat $ map word8 ws) (length ws)
 
 -- | Emit a 'Word16' in little endian format.
 emitWord16le :: Region -> Word16 -> BuildM ()
-emitWord16le r w = emit_ r (fromWord16le w) 2
+emitWord16le r w = emit_ r (word16LE w) 2
 
 -- | Emit a 'Word16' in big endian format.
 emitWord16be :: Region -> Word16 -> BuildM ()
-emitWord16be r w = emit_ r (fromWord16be w) 2
+emitWord16be r w = emit_ r (word16BE w) 2
 
 -- | Emit a 'Word16' in native host order and host endianness.
 emitWord16host :: Region -> Word16 -> BuildM ()
-emitWord16host r w = emit_ r (fromWord16host w) 2
+emitWord16host r w = emit_ r (word16Host w) 2
 
 -- | Emit a 'Word32' in little endian format.
 emitWord32le :: Region -> Word32 -> BuildM ()
-emitWord32le r w = emit_ r (fromWord32le w) 4
+emitWord32le r w = emit_ r (word32LE w) 4
 
 -- | Emit a 'Word32' in big endian format.
 emitWord32be :: Region -> Word32 -> BuildM ()
-emitWord32be r w = emit_ r (fromWord32be w) 4
+emitWord32be r w = emit_ r (word32BE w) 4
 
 -- | Emit a 'Word32' in native host order and host endianness.
 emitWord32host :: Region -> Word32 -> BuildM ()
-emitWord32host r w = emit_ r (fromWord32host w) 4
+emitWord32host r w = emit_ r (word32Host w) 4
 
 -- | Emit a 'Word64' in little endian format.
 emitWord64le :: Region -> Word64 -> BuildM ()
-emitWord64le r w = emit_ r (fromWord64le w) 8
+emitWord64le r w = emit_ r (word64LE w) 8
 
 -- | Emit a 'Word64' in big endian format.
 emitWord64be :: Region -> Word64 -> BuildM ()
-emitWord64be r w = emit_ r (fromWord64be w) 8
+emitWord64be r w = emit_ r (word64BE w) 8
 
 -- | Emit a 'Word64' in native host order and host endianness.
 emitWord64host :: Region -> Word64 -> BuildM ()
-emitWord64host r w = emit_ r (fromWord64host w) 8
-
+emitWord64host r w = emit_ r (word64Host w) 8
 
 -- | Emit a single byte.
 emitInt8 :: Region -> Int8 -> BuildM ()
-emitInt8 r w = emit_ r (fromInt8 w) 1
+emitInt8 r w = emit_ r (int8 w) 1
 
 -- | Emit a list of bytes.
 emitInt8s :: Region -> [Int8] -> BuildM ()
-emitInt8s r ws = emit_ r (fromInt8s ws) (length ws)
+emitInt8s r ws = emit_ r (mconcat $ map int8 ws) (length ws)
 
 -- | Emit a 'Int16' in little endian format.
 emitInt16le :: Region -> Int16 -> BuildM ()
-emitInt16le r w = emit_ r (fromInt16le w) 2
+emitInt16le r w = emit_ r (int16LE w) 2
 
 -- | Emit a 'Int16' in big endian format.
 emitInt16be :: Region -> Int16 -> BuildM ()
-emitInt16be r w = emit_ r (fromInt16be w) 2
+emitInt16be r w = emit_ r (int16BE w) 2
 
 -- | Emit a 'Int16' in native host order and host endianness.
 emitInt16host :: Region -> Int16 -> BuildM ()
-emitInt16host r w = emit_ r (fromInt16host w) 2
+emitInt16host r w = emit_ r (int16Host w) 2
 
 -- | Emit a 'Int32' in little endian format.
 emitInt32le :: Region -> Int32 -> BuildM ()
-emitInt32le r w = emit_ r (fromInt32le w) 4
+emitInt32le r w = emit_ r (int32LE w) 4
 
 -- | Emit a 'Int32' in big endian format.
 emitInt32be :: Region -> Int32 -> BuildM ()
-emitInt32be r w = emit_ r (fromInt32be w) 4
+emitInt32be r w = emit_ r (int32BE w) 4
 
 -- | Emit a 'Int32' in native host order and host endianness.
 emitInt32host :: Region -> Int32 -> BuildM ()
-emitInt32host r w = emit_ r (fromInt32host w) 4
+emitInt32host r w = emit_ r (int32Host w) 4
 
 -- | Emit a 'Int64' in little endian format.
 emitInt64le :: Region -> Int64 -> BuildM ()
-emitInt64le r w = emit_ r (fromInt64le w) 8
+emitInt64le r w = emit_ r (int64LE w) 8
 
 -- | Emit a 'Int64' in big endian format.
 emitInt64be :: Region -> Int64 -> BuildM ()
-emitInt64be r w = emit_ r (fromInt64be w) 8
+emitInt64be r w = emit_ r (int64BE w) 8
 
 -- | Emit a 'Int64' in native host order and host endianness.
 emitInt64host :: Region -> Int64 -> BuildM ()
-emitInt64host r w = emit_ r (fromInt64host w) 8
+emitInt64host r w = emit_ r (int64Host w) 8
+
 
 -- | Emit a strict 'S.ByteString'.
 emitByteString :: Region -> S.ByteString -> BuildM ()
-emitByteString r b = emit_ r (fromByteString b) (S.length b)
+emitByteString r b = emit_ r (byteString b) (S.length b)
 
 -- | Emit a lazy 'L.ByteString'.
 emitLazyByteString :: Region -> L.ByteString -> BuildM ()
 emitLazyByteString r b =
-  emit_ r (fromLazyByteString b) (fromIntegral (L.length b))
+  emit_ r (lazyByteString b) (fromIntegral (L.length b))
 
+{-
 -- | Emit an instance of 'Storable'.  Does not take into account alignment.
 emitStorable :: Storable a => Region -> a -> BuildM ()
 emitStorable r a = emit_ r (fromStorable a) (sizeOf a)
@@ -285,6 +289,7 @@ emitStorableList :: Storable a => Region -> [a] -> BuildM ()
 emitStorableList _ [] = return ()
 emitStorableList r as@(a:_) =
   emit_ r (fromStorables as) (length as * sizeOf a)
+-}
 
 -- | Emit a label at the current location in the given region.
 label :: Region -> BuildM Label
@@ -465,7 +470,7 @@ toLazyByteString order build =
         let contents = map ((regions IM.!) . regionToInt) regions_ordered
         go [] 0 mempty contents)
         
-    in Blaze.toLazyByteString bytes)
+    in Builder.toLazyByteString bytes)
   where
    mkLabelPositions :: Int -> ST s (STUArray s Int Int)
    mkLabelPositions numLabels =
@@ -478,29 +483,29 @@ dangling l sz =
 
 writeRef :: ByteOrder -> Size -> Int -> Builder
 writeRef _ S1 offs | -128 <= offs && offs <= 127 =
-  fromWrite (writeInt8 (fromIntegral offs))
+  int8 $! fromIntegral offs
 writeRef _ S1NoRC offs =
-  fromWrite (writeInt8 (fromIntegral offs))
+  int8 $! fromIntegral offs
 writeRef bo S2 offs | -32768 <= offs && offs <= 32767 =
   case bo of
-    LE -> fromWrite (writeInt16le (fromIntegral offs))
-    BE -> fromWrite (writeInt16be (fromIntegral offs))
-    Host -> fromWrite (writeInt16host (fromIntegral offs))
+    LE -> int16LE $! fromIntegral offs
+    BE -> int16BE $! fromIntegral offs
+    Host -> int16Host $! fromIntegral offs
 writeRef bo S2NoRC offs =
   case bo of
-    LE -> fromWrite (writeInt16le (fromIntegral offs))
-    BE -> fromWrite (writeInt16be (fromIntegral offs))
-    Host -> fromWrite (writeInt16host (fromIntegral offs))
+    LE -> int16LE $! fromIntegral offs
+    BE -> int16BE $! fromIntegral offs
+    Host -> int16Host $! fromIntegral offs
 writeRef bo S4 offs = -- it's probably in range
   case bo of
-    LE -> fromWrite (writeInt32le (fromIntegral offs))
-    BE -> fromWrite (writeInt32be (fromIntegral offs))
-    Host -> fromWrite (writeInt32host (fromIntegral offs))
+    LE -> int32LE $! fromIntegral offs
+    BE -> int32BE $! fromIntegral offs
+    Host -> int32Host $! fromIntegral offs
 writeRef bo S8 offs =
   case bo of
-    LE -> fromWrite (writeInt64le (fromIntegral offs))
-    BE -> fromWrite (writeInt64be (fromIntegral offs))
-    Host -> fromWrite (writeInt64host (fromIntegral offs))
+    LE -> int64LE $! fromIntegral offs
+    BE -> int64BE $! fromIntegral offs
+    Host -> int64Host $! fromIntegral offs
 writeRef _ s offs =
   error $ "Target (" ++ show offs ++ ") out ouf range for size " ++ show s
 
@@ -533,3 +538,4 @@ test3 = (L.unpack $ toLazyByteString id $ do
   l2 <- label r
   offset' S4 LE id r l1 l2) == [42,0,0,0,4,0,0,0]
 -- -}
+

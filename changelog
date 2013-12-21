@@ -1,0 +1,6 @@
+# 0.2
+
+ - Drop `blaze-builder` dependency and use `bytestring`'s builder type
+   instead.
+
+ - Drop support for `emitStorable` and `emitStorableList`.
